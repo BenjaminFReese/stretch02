@@ -1,0 +1,6 @@
+---
+title: "stretch02"
+author: "Benjamin Reese"
+format: pdf
+---
+
