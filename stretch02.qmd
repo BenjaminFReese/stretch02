@@ -20,7 +20,11 @@ load("~/Fall 2022/Data Science/stretch02/data/fed.RData")
 app_data <- read_csv("data/EAD+2.0+quarter+101019.csv")
 ```
 
-```{r}
+### (1)
+
+I am loading and joining three datasets together. The main dataset, that includes the variable I want to predict is `sep_data`. This dataset includes information on nearly every federal employee, covering most non-intelligence community agencies, who left federal service from 2005-2009. The goal of this analysis is to predict when federal employees will quit the federal workforce versus leaving for other reasons
+
+```{r cleaning and joining}
 ## Loading in data on when federal employees quit, creating education and quit variables
 sep_data <- sep_data %>%
   mutate(quarter = str_replace_all(EFDATE, "(.{4})(.*)", "\\1-\\2"),
