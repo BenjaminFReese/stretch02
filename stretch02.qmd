@@ -1,6 +1,78 @@
 ---
 title: "stretch02"
+subtitle:"Predicting Civil Servant Exit"
 author: "Benjamin Reese"
 format: pdf
 ---
+
+## Setup
+
+```{r packages and data loading}
+## Packages
+library(tidyverse)
+library(tidymodels)
+library(lubridate)
+library(readr)
+
+## Data Loading
+sep_data <- read.csv("SEPDATA_FY2005-2009.TXT")
+load("~/Fall 2022/Data Science/stretch02/data/fed.RData")
+app_data <- read_csv("data/EAD+2.0+quarter+101019.csv")
+```
+
+```{r}
+## Loading in data on when federal employees quit, creating education and quit variables
+sep_data <- sep_data %>%
+  mutate(quarter = str_replace_all(EFDATE, "(.{4})(.*)", "\\1-\\2"),
+         quarter = quarter(ym(quarter), type = "year.quarter"),
+         separation = if_else(SEP == "SC", 1, 0),
+         EDLVL = as.numeric(EDLVL)) %>%
+  filter(!is.na(EDLVL) & EDLVL != "**")%>%
+  mutate(education = case_when(
+           EDLVL < 4 ~ "Less Than High School",
+           EDLVL == 4 ~ "High School or GED",
+           EDLVL == 5 | EDLVL == 6 | EDLVL == 7 | EDLVL == 8 | EDLVL == 9 |
+           EDLVL == 10 | EDLVL == 11 | EDLVL == 12 ~ "Less than Bachelors",
+           EDLVL == 13 ~ "Bachelors",
+           EDLVL > 13 ~ "Graduate")) %>%
+  select(separation, education, quarter, SALARY, LOS)
+
+## dropping unused variables, creating a unified presidents and party variable, and filtering to only quarters
+## included in the civil servant exit data
+econ_data <- dta %>%
+  select(-Democrat, -pres1, -pres2, -pres3, -pres4, -pres5, -pres6, -pres7, 
+         -pres8, -pres9, -pres10, -pres11, -pres12, -pres13, -pres14, -pres15) %>%
+  mutate(admin = case_when(
+    president == 1 ~ "Obama",
+    president == 2 | president == 3 ~ "Eisenhower",
+    president == 4 ~ "H.W. Bush",
+    president == 5 | president == 6 ~ "W. Bush",
+    president == 7 ~ "Carter",
+    president == 8 ~ "Kennedy-Johnson",
+    president == 9 ~ "Johnson",
+    president == 10 ~ "Nixon-Ford",
+    president == 11 ~ "Nixon",
+    president == 12 | president == 13 ~ "Reagan",
+    president == 14 | president == 15 ~ "Clinton"),
+  party = case_when(
+    president_party == 2 ~ "R",
+    president_party == 1 ~ "D"),
+  quarter = quarter(DATE,type = "year.quarter")) %>%
+  filter(quarter > 1973.2) %>%
+    select(-president, -president_party, -DATE)
+
+## filtering to only include the US, dropping unused variables and renaming
+app_data <- app_data %>%
+  filter(Country == "United States") %>%
+  select(qtr, Approval_Smoothed) %>%
+  mutate(approval = Approval_Smoothed,
+    quarter = as.numeric(str_replace_all(qtr, 'q', "."))) %>%
+  select(-Approval_Smoothed, -qtr)
+
+## joining the three datasets all together into one unified tibble
+sep <- sep_data %>%
+  left_join(econ_data, by="quarter") %>%
+  left_join(app_data, by = "quarter") %>%
+  janitor::clean_names()
+```
 
