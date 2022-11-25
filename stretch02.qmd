@@ -199,9 +199,21 @@ Recall/Sensitivy/True Positive rate is most important error metric for this anal
 
 I define here three candidate models: a CART model, a logistic regression model, and a random forest model. Their exact specifications are below.
 
-The predictor variables are: level of education, fiscal quarter, employee salary, the Federal Reserve Funds rate, debt-to-GDP ratio, expenditure-to-GDP ratio, inflation, presidential administration, party of president, and presidential approving rating. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance, most likely president and president's party will be dropped. I will also turn the character variables into dichotomous predictors. The recipes for each of the models can be found below:
+The outcome variable to be classified is reason for separation, and it will be down-sampled in one recipe. The predictor variables are: level of education, fiscal quarter, employee salary, the Federal Reserve Funds rate, debt-to-GDP ratio, expenditure-to-GDP ratio, inflation, presidential administration, party of president, and presidential approving rating. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance, most likely president and president's party will be dropped. I will also turn the character variables into dichotomous predictors. The exact pre-processing for each variable can be found below:
 
-```{r}
+
+```{r 2 recipes}
 sep_rec_1 <-
+  recipe(separation ~ ., data = sep_train) %>%
+  themis::step_downsample(separation) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_nzv(all_numeric_predictors())
+
+sep_rec_2 <-
+  recipe(separation ~ ., data = sep_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_nzv(all_predictors())
+
 ```
 
