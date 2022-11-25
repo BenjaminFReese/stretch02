@@ -14,6 +14,7 @@ library(tidymodels)
 library(lubridate)
 library(readr)
 library(patchwork)
+library(ggjoy)
 
 ## Data Loading
 sep_data <- read.csv("SEPDATA_FY2005-2009.TXT")
@@ -23,7 +24,9 @@ app_data <- read_csv("data/EAD+2.0+quarter+101019.csv")
 
 ### (a)
 
-I am loading and joining three datasets together. The main dataset, that includes the variable I want to predict is `sep_data`. This dataset includes information on nearly every federal employee, covering most non-intelligence community agencies, who left federal service from 2005-2009. The goal of this analysis is to predict when federal employees will quit the federal workforce versus leaving for other reasons. The dependent variable is coded as quit or not quit. The other two datasets are for factors beyond what OPM tracks that mya contribute to people quitting the federal workforce. These datasets include economic variables like inflation and a variable for presidential approval. The end result of the analysis would be a model that predicts when an employee leaves, that they quit.
+I am loading and joining three datasets together. The main dataset, that includes the variable I want to predict is `sep_data`. This dataset includes information on nearly every federal employee, covering most non-intelligence community agencies, who left federal service from 2005-2009. The goal of this analysis is to predict when federal employees will quit the federal workforce versus leaving for other reasons. The dependent variable is coded as quit or not quit. The other two datasets are for factors beyond what OPM tracks that mya contribute to people quitting the federal workforce. These datasets include economic variables like inflation and a variable for presidential approval. The end result of the analysis would be a model that predicts when an employee leaves, that they quit. 
+
+The other types of leaving including in the dataset like retirements and Reductions In Force are mostly controllable or easily predicted by agencies based on the age of their employees and their internal staffing decisions. Quitting, though, can seriously disrupt an agencies function and is not as easily controlled by federal managers. Hopefully, this model will give some indication about when employees are likely to quit, and show the important factors that predict quitting.
 
 ```{r cleaning and joining, warning=FALSE,message=FALSE}
 ## Loading in data on when federal employees quit, creating education and quit variables
@@ -63,7 +66,7 @@ econ_data <- dta %>%
     president_party == 2 ~ "R",
     president_party == 1 ~ "D"),
   quarter = quarter(DATE,type = "year.quarter")) %>%
-    select(-president, -president_party, -DATE)
+    select(-president, -president_party, -DATE, -ygap)
 
 ## filtering to only include the US, dropping unused variables and renaming
 app_data <- app_data %>%
@@ -97,31 +100,88 @@ sep_test <- testing(split)
 ### (c)
 
 ```{r exploratory data analysis}
+## Displying More Places In Numbers
+
+options(scipen = 999999)
 ## Exploratory Data Analysis
-sep_train %>%
+
+## Line Plot of the # Employees Quitting
+m2 <- sep_train %>%
   filter(separation == "Quit") %>%
   group_by(quarter) %>%
   count(separation=="Quit") %>%
   ggplot(aes(x=quarter, y=n)) +
-  geom_point(col="blue") +
   geom_line(lwd=1, col="light blue") +
+    geom_point(col="blue") +
   theme_minimal() +
   labs(title = "When Civil Servants Exit", 
        subtitle = "Federal Employees Quit Most in Third Quarters",
-       x="Fiscal Year Quarter", y="Number of Employees Quitting",
-       caption = "Data Source: Office of Personnel Management")
+       x=NULL, y="# Quitting")
+
+## Line Plot of the Percentage of Employees Leaving That Quit
 m1 <- sep_train %>%
   mutate(separation = if_else(separation == "Quit", 1, 0)) %>%
   group_by(quarter) %>%
   summarise(percent_quit = mean(separation)) %>%
   mutate(percent_quit=percent_quit*100) %>%
   ggplot(aes(x=quarter, y=percent_quit)) +
-  geom_point(col="blue") +
   geom_line(lwd=1, col="light blue") +
+   geom_point(col="blue") +
   theme_minimal() +
   lims(y=c(33,43))+
-  labs(x="Fiscal Year Quarter", y="Percent of Leavers Who Quit")
+  labs(x="Fiscal Year Quarter", y="Percent Exits Who Quit", 
+       caption = "Data Source: Office of Personnel Management")
+## Using patchwork to display together
 m2 / m1
+
+## Relationship Between Salary And Quitting
+sep_train %>%
+  group_by(separation) %>%
+  ggplot(aes(x=salary, y=separation)) +
+  geom_violin(scale="area", col="blue", fill="light blue") +
+  theme_minimal() +
+  coord_flip() +
+  labs(y=NULL, x="Salary ($)", 
+       title="Distribution of Salary For Those Who Quit Vs Leave For Other Reasons",
+       subtitle = "Lower Income Employees More Likely to Quit")
+
+## Relationship Between Presidential Approval And Quitting
+sep_train %>%
+  group_by(separation) %>%
+  ggplot(aes(x=approval, y=separation, fill=separation)) +
+  geom_joy() +
+  theme_minimal() +
+  labs(y=NULL, x="Approval Rating (%)", 
+       title="Presidential Approval and Federal Employee Exit",
+       subtitle = "More Employees Quit When Presidential Approval Is Low",
+       fill=NULL)
+
+## Relationship Between Fed Funds Rate And Quitting
+sep_train %>%
+  group_by(separation) %>%
+  ggplot(aes(x=lag_fedfunds, y=separation, fill=separation)) +
+  geom_joy() +
+  theme_minimal() +
+  labs(y=NULL, x="Lagged Fed Funds Rate", 
+       title="Federal Interest Rates and Employee Exit",
+       subtitle = "More Employees Leave When Interest Rates Are High",
+       fill=NULL)
+
+## Party And Quitting
+sep_train %>%
+  mutate(separation = if_else(separation == "Quit", 1, 0)) %>%
+  group_by(party) %>%
+  summarise(percent_quit = mean(separation))
+  
 
 ```
 
+The data analysis above explores a few possible variables that may be important in predicting when federal employees quit. The first two plots simply plot the number and proportion of quitting employees over the nearly 5 years included in the dataset. 
+
+The violin plot below the line graphs show that the majority of quitters are in low income positions, meaning the people with higher pay, and probably more prestigious or professional careers, are less likely to quit than lower income employees.
+
+Perhaps unexpectedly, federal employees are more likely to quit when presidential approval rating is lower. As the president is the Chief Executive Officer of the federal bureaucracy, it makes sense that a disliked president will see more of their employees leaving than a liked president. It is important to remember that this data mostly only as 1 president: George W. Bush.
+
+The final joyplot uses the Federal Reserve Funds rate as a proxy for economic performance. The Federal Reserve usually increases interest rates to slow economic growth in order to stem inflation and maintain normative location on the Phillip's Curve, times with high Fed Funds rates can be used as an economic indicator. The plot shows that more civil servants quit when Fed Funds rates are high. The full dataset includes variables for inflation, so it will be interesting to see how important economic performance is for predicting federal employee exit.
+
+Finally, the table above shows that Republicans, in this case only George W. Bush, saw a higher percentage of employees leaving as quitters than Obama.
