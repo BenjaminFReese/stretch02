@@ -24,9 +24,11 @@ app_data <- read_csv("data/EAD+2.0+quarter+101019.csv")
 
 ### (a)
 
+#### Why Do Federal Employees Leave the Civil Service?
+
 I am loading and joining three datasets together. The main dataset, that includes the variable I want to predict is `sep_data`. This dataset includes information on nearly every federal employee, covering most non-intelligence community agencies, who left federal service from 2005-2009. The goal of this analysis is to predict when federal employees will quit the federal workforce versus leaving for other reasons. The dependent variable is coded as quit or not quit. The other two datasets are for factors beyond what OPM tracks that mya contribute to people quitting the federal workforce. These datasets include economic variables like inflation and a variable for presidential approval. The end result of the analysis would be a model that predicts when an employee leaves, that they quit. 
 
-The other types of leaving including in the dataset like retirements and Reductions In Force are mostly controllable or easily predicted by agencies based on the age of their employees and their internal staffing decisions. Quitting, though, can seriously disrupt an agencies function and is not as easily controlled by federal managers. Hopefully, this model will give some indication about when employees are likely to quit, and show the important factors that predict quitting.
+The other types of leaving including in the dataset like retirements and Reductions In Force are mostly controllable or easily predicted by agencies based on the age of their employees and their internal staffing decisions. Quitting, though, can seriously disrupt an agencies function and is not as easily controlled by federal managers. Hopefully, this model will give some indication about when employees are likely to quit, and show the important factors that predict quitting. In sum, this model answer the question: why do federal employees leave the civil service?
 
 ```{r cleaning and joining, warning=FALSE,message=FALSE}
 ## Loading in data on when federal employees quit, creating education and quit variables
@@ -81,6 +83,7 @@ sep <- sep_data %>%
   left_join(econ_data, by="quarter") %>%
   left_join(app_data, by = "quarter") %>%
   janitor::clean_names()
+
 ```
 
 ### (b)
@@ -188,4 +191,17 @@ Finally, the table above shows that Republicans, in this case only George W. Bus
 
 ### (d)
 
-Recall/Sensitivy/True Positive rate is most important error metric for this analysis because the goal is to accurately predict an event. Incorrect predictions are the most costly form of error because not preparing for a large sudden civil servant exit could cause large efficiency losses in the federal service. Thus, a false negative is more damaging than a false positive. A false positive, or expecting a federal employee to quit, may still carry large costs if the prediction is so incorrect that it causes agencies to hire unneeded employees, but, overall, with the goal being to reduce uncertainty in the exiting of civil servants, false negatives are far more costly. In sum, the costs of false negatives, and a low sensitivity/recall makes the model useless because it is not fulfilling its role in reducing uncertainity in federal employee exit.
+Recall/Sensitivy/True Positive rate is most important error metric for this analysis because the goal is to accurately predict an event. Incorrect predictions are the most costly form of error because not preparing for a large sudden civil servant exit could cause large efficiency losses in the federal service. Thus, a false negative is more damaging than a false positive. A false positive, or expecting a federal employee to quit, may still carry large costs if the prediction is so incorrect that it causes agencies to hire unneeded employees, but, overall, with the goal being to reduce uncertainty in the exiting of civil servants, false negatives are far more costly. In sum, the costs of false negatives, and a low sensitivity/recall makes the model useless because it is not fulfilling its role in reducing uncertainty in federal employee exit.
+
+## Models
+
+### (a) 
+
+I define here three candidate models: a CART model, a logistic regression model, and a random forest model. Their exact specifications are below.
+
+The predictor variables are: level of education, fiscal quarter, employee salary, the Federal Reserve Funds rate, debt-to-GDP ratio, expenditure-to-GDP ratio, inflation, presidential administration, party of president, and presidential approving rating. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance, most likely president and president's party will be dropped. I will also turn the character variables into dichotomous predictors. The recipes for each of the models can be found below:
+
+```{r}
+sep_rec_1 <-
+```
+
