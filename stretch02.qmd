@@ -197,12 +197,13 @@ Recall/Sensitivy/True Positive rate is most important error metric for this anal
 
 ### (a) 
 
-I define here three candidate models: a CART model, a logistic regression model, and a random forest model. Their exact specifications are below.
+I define here three candidate models with two different pre-processings. Their exact specifications are below.
 
-The outcome variable to be classified is reason for separation, and it will be down-sampled in one recipe. The predictor variables are: level of education, fiscal quarter, employee salary, the Federal Reserve Funds rate, debt-to-GDP ratio, expenditure-to-GDP ratio, inflation, presidential administration, party of president, and presidential approving rating. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance, most likely president and president's party will be dropped. I will also turn the character variables into dichotomous predictors. The exact pre-processing for each variable can be found below:
+The outcome variable to be classified is reason for separation, and it will be down-sampled in one recipe. The predictor variables are: level of education - which will be pre-processed into dummy variables, fiscal quarter - which will be pre-processed into a dummy variable, employee salary - which will be normalized, the Federal Reserve Funds rate - which will be normalized, debt-to-GDP ratio - which will be normalized, expenditure-to-GDP ratio - which will be normalized, inflation -  which will be normalized, presidential administration - which will be made into dummy variables, party of president - which will also be made into dummy variables, and presidential approving rating - which will be normalized. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance, most likely president and president's party will be dropped. I will also turn the character variables into dichotomous predictors for one of the recipes. The exact pre-processing for each variable can be found below:
 
 
 ```{r 2 recipes}
+## First Recipe
 sep_rec_1 <-
   recipe(separation ~ ., data = sep_train) %>%
   themis::step_downsample(separation) %>%
@@ -210,10 +211,72 @@ sep_rec_1 <-
   step_normalize(all_numeric_predictors()) %>%
   step_nzv(all_numeric_predictors())
 
+## Second Recipe
 sep_rec_2 <-
   recipe(separation ~ ., data = sep_train) %>%
   step_normalize(all_numeric_predictors()) %>%
-  step_nzv(all_predictors())
+  step_nzv(all_predictors())                                             
 
+## Setting up folds for cross-validation
+folds <- vfold_cv(sep_train, folds=10)
+```
+
+The three candidate models considered here are a CART model, a logistic regression model, and a random forest model. 
+
+A CART, or classification and regression tree, model is a predictive model that predicts an outcome variable's values based on a set of predictors. The output of the CART model is a decision tree where each fork is a split in a predictor variable and each end node contains a prediction for the outcome variable. A logistic model, specifically as used in machine learning models, is a classification algorithm that predicts the probability of certain classifications based on some dependent variables. Finally, a random forest model is an algorithm that can be used both in classification and regression problems, but I will use it for classification. Random forest models build decision trees on different samples and take a majority vote for classification. The exact model specifications can be found below. The random forest model will include hyperparameter tuning for the number of trees.
+
+### CART Model Specification and Workflow
+
+```{r cart model}
+## Creating the CART Model
+cart_mod <-
+  decision_tree() %>%
+  set_engine(engine = "rpart") %>%
+  set_mode(mode = "classification")
+
+## CART Workflow
+cart_wf <- workflow() %>%
+  add_recipe(sep_rec_1) %>%
+  add_model(cart_mod)
+```
+
+### Random Forest Model Specification and Workflow
+
+```{r rd model}
+## Creating Grid for Hyperparameter Tuning
+rf_grid <- grid_regular(
+  mtry(range = c(10, 30)),
+  min_n(range = c(2, 8)),
+  levels = 5)
+
+## Random Forest Model
+rf_mod <- rand_forest(mtry = tune(), trees = 1000, min_n = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("ranger")
+
+## Random Forest Workflow
+rf_wf <- workflow() %>%
+  add_recipe(sep_rec_2) %>%
+  add_model(rf_mod)
+
+## Tuning Hyperparameters
+rf_class <- rf_wf %>%
+  tune_grid(tune_wf, resamples = trees_folds, grid = 20)
+
+```
+
+### Logisitic Regression Model Specification and Workflow
+
+```{r logistic}
+## Creating the Logistic Regression Model
+log_mod <-
+  logistic_reg() %>%
+  set_engine(engine = "glm") %>%
+  set_mode(mode = "classification")
+
+## CART Workflow
+log_wf <- workflow() %>%
+  add_recipe(sep_rec_1) %>%
+  add_model(log_mod)
 ```
 
