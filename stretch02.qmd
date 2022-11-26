@@ -349,7 +349,7 @@ In the context of the application, the results show that the length of service (
 
 ### (b) 
 
-The biggest weakness of this model is that I do not have data on the employees that did not leave for some reason, so there is no counter-factual to compare too. I also only have data for 2005-2009 which is highly limited. 
+The biggest weakness of this model is that I do not have data on the employees that did not leave for some reason, so there is no counter-factual to compare too. I also only have data for 2005-2009 which is highly limited. A better construction the dependent variable of interest, as I discuss below, would benefit the accuracy and better capture the intention of the model. This can be remedied through the use of a larger source of data that includes bureaucrats who did not leave, and then try to predict quitting when compared to continuing to work when the model now predicts quitting versus leaving for other reasons.
 
 For feature engineering decisions, transforming some more variables during pre-processing may improve the accuracy and sensitivity of the model. Taking the log of salary could better account for outliers and the fact that some civil servants have vastly higher salaries than the mean. Second, creating new variables from existing variables, like using pay-grade to classify an employees managerial status within the bureaucracy. It is possible that higher level civil servants, who probably have greater exit options, may be more likely to quit. A categorical variable that captures different GS levels may increase the performance of this model.  
 
