@@ -1,6 +1,6 @@
 ---
 title: "stretch02"
-subtitle:"Predicting Civil Servant Exit"
+subtitle:"Predicting Why Civil Servants Exit"
 author: "Benjamin Reese"
 format: pdf
 ---
@@ -343,7 +343,7 @@ rpart.plot::rpart.plot(x = cart_final$fit$fit$fit)
 
 ### (a)
 
-Overall, the best model had an accuracy of $\approx .688$ and a recall rate of $\approx .52$. Recall, or how often the classifier is correct when there is an event was quite low. Considering the outcome variable, "quit" or "not quit", was dichotomous, a coin flip could give the correct result 50% of the time, and the recall value is not much higher. The accuracy, though, is higher and the model is nearly 70% accurate. 
+Overall, the best model had an accuracy of $\approx .688$ and a recall rate of $\approx .53$. Recall, or how often the classifier is correct when there is an event was quite low. Considering the outcome variable, "quit" or "not quit", was dichotomous, a coin flip could give the correct result 50% of the time, and the recall value is not much higher. The accuracy, though, is higher and the model is nearly 70% accurate. 
 
 In the context of the application, the results show that the length of service (los) is the main, and only variable that causes a split in the decision tree. This means that the largest predictor of whether an employee will retire or quit is if the employee stays for longer than .43 years. Civil servants that quit seem to be more likely to do so early in the term of their service. The recommendation from this model would be to, perhaps obviously, try to keep employees initially for nearly half a year, and then that employee could spend much of their career with the agency. Considering the not perfect error metrics, agencies should focus efforts on appealing to recently hired employees in order to reduce uncertainity in the civil service.
 
