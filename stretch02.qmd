@@ -7,7 +7,7 @@ format: pdf
 
 ## Setup
 
-```{r packages and data loading}
+```{r packages and data loading, warning=TRUE, message=FALSE}
 ## Packages
 library(tidyverse)
 library(tidymodels)
@@ -15,6 +15,7 @@ library(lubridate)
 library(readr)
 library(patchwork)
 library(ggjoy)
+library(vip)
 
 ## Data Loading
 sep_data <- read.csv("SEPDATA_FY2005-2009.TXT")
@@ -88,7 +89,7 @@ sep <- sep_data %>%
 
 ### (b)
 
-```{r splitting}
+```{r splitting, warning=TRUE, message=FALSE}
 ## Setting Seed
 set.seed(20201124)
 
@@ -102,7 +103,7 @@ sep_test <- testing(split)
 
 ### (c)
 
-```{r exploratory data analysis}
+```{r exploratory data analysis, warning=TRUE, message=FALSE}
 ## Displying More Places In Numbers
 
 options(scipen = 999999)
@@ -191,7 +192,7 @@ Finally, the table above shows that Republicans, in this case only George W. Bus
 
 ### (d)
 
-Recall/Sensitivy/True Positive rate is most important error metric for this analysis because the goal is to accurately predict an event. Incorrect predictions are the most costly form of error because not preparing for a large sudden civil servant exit could cause large efficiency losses in the federal service. Thus, a false negative is more damaging than a false positive. A false positive, or expecting a federal employee to quit, may still carry large costs if the prediction is so incorrect that it causes agencies to hire unneeded employees, but, overall, with the goal being to reduce uncertainty in the exiting of civil servants, false negatives are far more costly. In sum, the costs of false negatives, and a low sensitivity/recall makes the model useless because it is not fulfilling its role in reducing uncertainty in federal employee exit.
+Overall Accuracy and the Recall/Sensitivy/True Positive rate are the most important error metric for this analysis because the goal is to accurately predict an event. Incorrect predictions are the most costly form of error because not preparing for a large sudden civil servant exit could cause large efficiency losses in the federal service. Thus, a false negative is more damaging than a false positive. A false positive, or expecting a federal employee to quit, may still carry large costs if the prediction is so incorrect that it causes agencies to hire unneeded employees, but, overall, with the goal being to reduce uncertainty in the exiting of civil servants, false negatives are far more costly. In sum, the costs of false negatives, and a low sensitivity/recall makes the model useless because it is not fulfilling its role in reducing uncertainty in federal employee exit. While I will select the best model based on overall accuracy, I will also evaluate the final model in terms of recall as well.
 
 ## Models
 
@@ -202,7 +203,7 @@ I define here three candidate models with two different pre-processings. Their e
 The outcome variable to be classified is reason for separation, and it will be down-sampled in one recipe. The predictor variables are: level of education - which will be pre-processed into dummy variables, fiscal quarter - which will be pre-processed into a dummy variable, employee salary - which will be normalized, the Federal Reserve Funds rate - which will be normalized, debt-to-GDP ratio - which will be normalized, expenditure-to-GDP ratio - which will be normalized, inflation -  which will be normalized, presidential administration - which will be made into dummy variables, party of president - which will also be made into dummy variables, and presidential approving rating - which will be normalized. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance, most likely president and president's party will be dropped. I will also turn the character variables into dichotomous predictors for one of the recipes. The exact pre-processing for each variable can be found below:
 
 
-```{r 2 recipes}
+```{r 2 recipes, warning=TRUE, message=FALSE}
 ## First Recipe
 sep_rec_1 <-
   recipe(separation ~ ., data = sep_train) %>%
@@ -227,7 +228,7 @@ A CART, or classification and regression tree, model is a predictive model that 
 
 ### CART Model Specification and Workflow
 
-```{r cart model}
+```{r cart model, warning=TRUE, message=FALSE}
 ## Creating the CART Model
 cart_mod <-
   decision_tree() %>%
@@ -242,7 +243,7 @@ cart_wf <- workflow() %>%
 
 ### Random Forest Model Specification and Workflow
 
-```{r rd model}
+```{r rd model, warning=TRUE, message=FALSE}
 ## Creating Grid for Hyperparameter Tuning
 rf_grid <- grid_regular(
   mtry(range = c(10, 30)),
@@ -267,16 +268,46 @@ rf_class <- rf_wf %>%
 
 ### Logisitic Regression Model Specification and Workflow
 
-```{r logistic}
+```{r logistic, warning=TRUE, message=FALSE}
 ## Creating the Logistic Regression Model
 log_mod <-
   logistic_reg() %>%
   set_engine(engine = "glm") %>%
   set_mode(mode = "classification")
 
-## CART Workflow
+## Logistic Regression Workflow
 log_wf <- workflow() %>%
   add_recipe(sep_rec_1) %>%
   add_model(log_mod)
+```
+
+## 3
+
+In this section, I implement the CART model above to try to predict the reasons why civil servants exit.
+
+```{r implementation, warning=TRUE, message=FALSE}
+## Creating the CART Model
+cart_mod <-
+  decision_tree() %>%
+  set_engine(engine = "rpart") %>%
+  set_mode(mode = "classification")
+
+## CART Workflow
+cart_wf <- workflow() %>%
+  add_recipe(sep_rec_1) %>%
+  add_model(cart_mod)
+
+## Estimating the Model
+cart_fit <- cart_wf %>%
+  fit_resamples(resamples = folds)
+
+## Selecting Best Model
+cart_fit_best <- cart_fit %>%
+  select_best(cart_fit, metric = "accuracy")
+
+## Finalizing Workflow for Best Model
+cart_final <- cart_wf %>%
+  tune::finalize_workflow(cart_fit_best) %>%
+  parsnip::fit(data = sep_train)
 ```
 
