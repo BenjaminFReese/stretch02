@@ -1,8 +1,9 @@
 ---
-title: "stretch02"
+title: "Stretch 02"
 subtitle:"Predicting Why Civil Servants Exit"
 author: "Benjamin Reese"
-format: pdf
+format: html
+self-contained: true
 ---
 
 ## Setup
@@ -27,9 +28,13 @@ app_data <- read_csv("data/EAD+2.0+quarter+101019.csv")
 
 #### Why Do Federal Employees Leave the Civil Service?
 
-I am loading and joining three datasets together. The main dataset, that includes the variable I want to predict is `sep_data`. This dataset includes information on nearly every federal employee, covering most non-intelligence community agencies, who left federal service from 2005-2009. The goal of this analysis is to predict when federal employees will quit the federal workforce versus leaving for other reasons. The dependent variable is coded as quit or not quit. The other two datasets are for factors beyond what OPM tracks that mya contribute to people quitting the federal workforce. These datasets include economic variables like inflation and a variable for presidential approval. The end result of the analysis would be a model that predicts when an employee leaves, that they quit. 
+I am loading and joining three datasets together. The main dataset, that includes the variable I want to predict is `sep_data`. This dataset includes information on nearly every federal employee, covering most non-intelligence community agencies, who left federal service from 2005-2009. This dataset can be found [here](https://www.opm.gov/data/index.aspx). The goal of this analysis is to predict why federal employees leave the federal workforce. I construct the classification as quit or not quit for simplicity. The other two datasets are for factors beyond what OPM tracks that may contribute to people leaving the federal workforce. The first of the supplementary datasets includes economic variables like inflation and a variable for presidential approval prepared by Mike Bailey for his introductory statsitics textbook. It can be found [here](https://global.oup.com/us/companion.websites/9780199981946/stu/ch6/data_sets/). The second of the supplementary datasets was compiled by the Executive Approval Project and covers presidential approval. It can be found [here](http://www.executiveapproval.org/datasets-1/). The end result of the analysis will be a model that predicts why a civil servant quits versus leaving for another reason such as retirement or being fired. 
 
-The other types of leaving including in the dataset like retirements and Reductions In Force are mostly controllable or easily predicted by agencies based on the age of their employees and their internal staffing decisions. Quitting, though, can seriously disrupt an agencies function and is not as easily controlled by federal managers. Hopefully, this model will give some indication about when employees are likely to quit, and show the important factors that predict quitting. In sum, this model answer the question: why do federal employees leave the civil service?
+Types of non-quitting civil servant exit includes retirements and Reductions In Force are mostly controllable or more easily predicted by agencies based on the age of their employees and their internal staffing decisions. Quitting, though, can seriously disrupt an agency's functionality and is not as easily controlled or predictable by federal managers. Hopefully, this model will give some indication about why employees quit and show the important factors that predict quitting. In sum, this model hopes to answer the question: why do federal employees leave the civil service?
+
+### Data Wrangling
+
+The code below reads in the three datasets, creates some variables of interest and joins them all together.
 
 ```{r cleaning and joining, warning=FALSE,message=FALSE}
 ## Loading in data on when federal employees quit, creating education and quit variables
@@ -69,7 +74,7 @@ econ_data <- dta %>%
     president_party == 2 ~ "R",
     president_party == 1 ~ "D"),
   quarter = quarter(DATE,type = "year.quarter")) %>%
-    select(-president, -president_party, -DATE, -ygap)
+    select(-president, -president_party, -DATE, -ygap, -Quarters)
 
 ## filtering to only include the US, dropping unused variables and renaming
 app_data <- app_data %>%
@@ -83,8 +88,8 @@ app_data <- app_data %>%
 sep <- sep_data %>%
   left_join(econ_data, by="quarter") %>%
   left_join(app_data, by = "quarter") %>%
+  mutate(quarter = as.character(quarter)) %>%
   janitor::clean_names()
-
 ```
 
 ### (b)
@@ -104,9 +109,9 @@ sep_test <- testing(split)
 ### (c)
 
 ```{r exploratory data analysis, warning=TRUE, message=FALSE}
-## Displying More Places In Numbers
-
+## Displaying More Places In Numbers
 options(scipen = 999999)
+
 ## Exploratory Data Analysis
 
 ## Line Plot of the # Employees Quitting
@@ -180,19 +185,19 @@ sep_train %>%
 
 ```
 
-The data analysis above explores a few possible variables that may be important in predicting when federal employees quit. The first two plots simply plot the number and proportion of quitting employees over the nearly 5 years included in the dataset. 
+The data analysis above explores a few possible variables that may be important in predicting why federal employees quit. The first two plots simply plot the number and proportion of quitting employees over the nearly 5 years included in the dataset. 
 
-The violin plot below the line graphs show that the majority of quitters are in low income positions, meaning the people with higher pay, and probably more prestigious or professional careers, are less likely to quit than lower income employees.
+The violin plot below the line graphs shows that the majority of quitters are in low income positions, meaning the people with higher pay, and probably more prestigious or professional occupations, are less likely to quit than lower-income employees.
 
-Perhaps unexpectedly, federal employees are more likely to quit when presidential approval rating is lower. As the president is the Chief Executive Officer of the federal bureaucracy, it makes sense that a disliked president will see more of their employees leaving than a liked president. It is important to remember that this data mostly only as 1 president: George W. Bush.
+Perhaps expectedly, federal employees seem to be more likely to quit when presidential approval rating is lower. As the president is the Chief Executive Officer of the federal bureaucracy, it makes sense that a disliked president will see more of their employees leaving than a liked president. It is important to remember that this data mostly only for 1 president, though: George W. Bush.
 
-The final joyplot uses the Federal Reserve Funds rate as a proxy for economic performance. The Federal Reserve usually increases interest rates to slow economic growth in order to stem inflation and maintain normative location on the Phillip's Curve, times with high Fed Funds rates can be used as an economic indicator. The plot shows that more civil servants quit when Fed Funds rates are high. The full dataset includes variables for inflation, so it will be interesting to see how important economic performance is for predicting federal employee exit.
+The joyplot uses the Federal Reserve Funds rate as a proxy for economic performance. The Federal Reserve usually increases interest rates to slow economic growth in order to stem inflation and maintain normative location on the Phillip's Curve. Times with high Fed Funds rates can be used as an imperfect economic indicator. The plot shows that more civil servants quit when Fed Funds rates are high. The full dataset includes variables for inflation, so it will be interesting to see how important economic performance is for predicting federal employee exit.
 
 Finally, the table above shows that Republicans, in this case only George W. Bush, saw a higher percentage of employees leaving as quitters than Obama.
 
 ### (d)
 
-Overall Accuracy and the Recall/Sensitivy/True Positive rate are the most important error metric for this analysis because the goal is to accurately predict an event. Incorrect predictions are the most costly form of error because not preparing for a large sudden civil servant exit could cause large efficiency losses in the federal service. Thus, a false negative is more damaging than a false positive. A false positive, or expecting a federal employee to quit, may still carry large costs if the prediction is so incorrect that it causes agencies to hire unneeded employees, but, overall, with the goal being to reduce uncertainty in the exiting of civil servants, false negatives are far more costly. In sum, the costs of false negatives, and a low sensitivity/recall makes the model useless because it is not fulfilling its role in reducing uncertainty in federal employee exit. While I will select the best model based on overall accuracy, I will also evaluate the final model in terms of recall as well.
+Overall Accuracy and the Recall/Sensitivy/True Positive rate are the most important error metrics for this analysis because the goal is to accurately predict an event. Incorrect predictions are the most costly form of error because not preparing for a large sudden civil servant exit could cause large efficiency losses in the federal service. Thus, a false negative is more damaging than a false positive. A false positive, or expecting a federal employee to quit, may still carry large costs if the prediction is so incorrect that it causes agencies to hire unneeded employees, but, overall, with the goal being to reduce uncertainty in the exiting of civil servants, false negatives are far more costly. In sum, the costs of false negatives, and a low sensitivity/recall makes the model less useful because it is not fulfilling its role in reducing uncertainty in federal employee exit. While I will select the best model based on overall accuracy, I will also evaluate the final model in terms of recall.
 
 ## Models
 
@@ -200,7 +205,7 @@ Overall Accuracy and the Recall/Sensitivy/True Positive rate are the most import
 
 I define here three candidate models with two different pre-processings. Their exact specifications are below.
 
-The outcome variable to be classified is reason for separation, and it will be down-sampled in one recipe. The predictor variables are: level of education - which will be pre-processed into dummy variables, fiscal quarter - which will be pre-processed into a dummy variable, employee salary - which will be normalized, the Federal Reserve Funds rate - which will be normalized, debt-to-GDP ratio - which will be normalized, expenditure-to-GDP ratio - which will be normalized, inflation -  which will be normalized, presidential administration - which will be made into dummy variables, party of president - which will also be made into dummy variables, and presidential approving rating - which will be normalized. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance, most likely president and president's party will be dropped. I will also turn the character variables into dichotomous predictors for one of the recipes. The exact pre-processing for each variable can be found below:
+The outcome variable to be classified is reason for separation, and it will be down-sampled in one recipe. The predictor variables are: level of education - which will be pre-processed into dummy variables, fiscal quarter - which will be pre-processed into dummy variables, employee salary - which will be normalized, the Federal Reserve Funds rate - which will be normalized, debt-to-GDP ratio - which will be normalized, expenditure-to-GDP ratio - which will be normalized, inflation -  which will be normalized, presidential administration - which will be made into dummy variables, party of president - will also be made into dummy variables, and presidential approving rating - which will be normalized. Since there are a variety of different units and, for example, the salary and inflation variables are wildly skewed, all of these predictors need normalization during pre-processing. I will also drop variables without much variance. I will also turn the character variables into dichotomous predictors for one of the recipes. The exact pre-processing for each variable can be found below:
 
 
 ```{r 2 recipes, warning=TRUE, message=FALSE}
@@ -224,7 +229,7 @@ folds <- vfold_cv(sep_train, folds=10)
 
 The three candidate models considered here are a CART model, a logistic regression model, and a random forest model. 
 
-A CART, or classification and regression tree, model is a predictive model that predicts an outcome variable's values based on a set of predictors. The output of the CART model is a decision tree where each fork is a split in a predictor variable and each end node contains a prediction for the outcome variable. A logistic model, specifically as used in machine learning models, is a classification algorithm that predicts the probability of certain classifications based on some dependent variables. Finally, a random forest model is an algorithm that can be used both in classification and regression problems, but I will use it for classification. Random forest models build decision trees on different samples and take a majority vote for classification. The exact model specifications can be found below. The random forest model will include hyperparameter tuning for the number of trees.
+A CART, or classification and regression tree, model is a predictive model that predicts an outcome variable's values based on a set of predictors. The output of the CART model is a decision tree where each fork is a split in a predictor variable and each end node contains a prediction for the outcome variable. A logistic model, specifically as used in machine learning models, is a classification algorithm that predicts the probability of certain classifications based on some dependent variables. Finally, a random forest model is an algorithm that can be used both in classification and regression problems, and I would use it for classification. Random forest models build decision trees on different samples and take a majority vote for classification. The exact model specifications can be found below. The random forest model will include hyper-parameter tuning for the number of trees.
 
 ### CART Model Specification and Workflow
 
@@ -252,8 +257,8 @@ rf_grid <- grid_regular(
 
 ## Random Forest Model
 rf_mod <- rand_forest(mtry = tune(), trees = 1000, min_n = tune()) %>%
-  set_mode("classification") %>%
-  set_engine("ranger")
+  set_engine("ranger") %>%
+  set_mode("classification")
 
 ## Random Forest Workflow
 rf_wf <- workflow() %>%
@@ -262,7 +267,7 @@ rf_wf <- workflow() %>%
 
 ## Tuning Hyperparameters
 rf_class <- rf_wf %>%
-  tune_grid(tune_wf, resamples = trees_folds, grid = 20)
+  tune_grid(tune_wf, resamples = folds, grid = rf_grid)
 
 ```
 
@@ -309,6 +314,7 @@ cart_fit_best <- cart_fit %>%
 cart_final <- cart_wf %>%
   tune::finalize_workflow(cart_fit_best) %>%
   parsnip::fit(data = sep_train)
+
 ```
 
 ## 4
@@ -345,14 +351,14 @@ rpart.plot::rpart.plot(x = cart_final$fit$fit$fit)
 
 Overall, the best model had an accuracy of $\approx .688$ and a recall rate of $\approx .53$. Recall, or how often the classifier is correct when there is an event was quite low. Considering the outcome variable, "quit" or "not quit", was dichotomous, a coin flip could give the correct result 50% of the time, and the recall value is not much higher. The accuracy, though, is higher and the model is nearly 70% accurate. 
 
-In the context of the application, the results show that the length of service (los) is the main, and only variable that causes a split in the decision tree. This means that the largest predictor of whether an employee will retire or quit is if the employee stays for longer than .43 years. Civil servants that quit seem to be more likely to do so early in the term of their service. The recommendation from this model would be to, perhaps obviously, try to keep employees initially for nearly half a year, and then that employee could spend much of their career with the agency. Considering the not perfect error metrics, agencies should focus efforts on appealing to recently hired employees in order to reduce uncertainity in the civil service.
+In the context of the application, the results show that the length of service (los) is the main, and only variable that causes a split in the decision tree. This means that the largest predictor of whether an employee will quit or not is if the employee stays for longer than .43 years. Civil servants that quit seem to be more likely to do so early in the term of their service. The recommendation from this model would be to, perhaps obviously, try to keep employees initially for nearly half a year, and then that employee could spend much of their career with the agency or the agency can deciede when they leave. Taking into account the not perfect error metrics, agencies should focus efforts on appealing to recently hired employees in order to reduce uncertainty in the civil service.
 
 ### (b) 
 
-The biggest weakness of this model is that I do not have data on the employees that did not leave for some reason, so there is no counter-factual to compare too. I also only have data for 2005-2009 which is highly limited. A better construction the dependent variable of interest, as I discuss below, would benefit the accuracy and better capture the intention of the model. This can be remedied through the use of a larger source of data that includes bureaucrats who did not leave, and then try to predict quitting when compared to continuing to work when the model now predicts quitting versus leaving for other reasons.
+The biggest weakness of this model is that I do not have data on the employees that did not leave for some reason, so there is no counter-factual to compare too. I also only have data for 2005-2009 which is highly limited. A better construction the dependent variable of interest, as I discuss below, would benefit the accuracy and better capture the intention of the model. This can be remedied through the use of a larger source of data that includes bureaucrats who did not separate, and then try to predict quitting when compared to continuing to work when the model now predicts quitting versus leaving for other reasons.
 
-For feature engineering decisions, transforming some more variables during pre-processing may improve the accuracy and sensitivity of the model. Taking the log of salary could better account for outliers and the fact that some civil servants have vastly higher salaries than the mean. Second, creating new variables from existing variables, like using pay-grade to classify an employees managerial status within the bureaucracy. It is possible that higher level civil servants, who probably have greater exit options, may be more likely to quit. A categorical variable that captures different GS levels may increase the performance of this model.  
+For feature engineering decisions, transforming some more variables during pre-processing may improve the accuracy and sensitivity of the model. Taking the log of salary could better account for outliers and the fact that some civil servants have vastly higher salaries than the mean. Second, creating new variables from existing variables, like using pay-grade to classify an employee's managerial status within the bureaucracy. It is possible that higher level civil servants, who probably have greater exit options, may be more likely to quit. A categorical variable that captures different GS levels may increase the performance of this model.  
 
-For modeling decisions, I would first want to implement a random forest model. A random forest model, which can have better predictive power than a CART mode, could increase the accuracy and recall of my model. I would also consider using a logistic regression model that could predict the probability of quitting. 
+For modeling decisions, I would first want to implement a random forest model. A random forest model, which can have better predictive power than a CART model, could increase the accuracy and recall of my model. I would also consider using a logistic regression model that could better predict the probability of quitting. 
 
 Finally, part of both feature selection and modeling decisions, defining my dependent variable as length of service before quitting, a continuous variable, would allow the use of non-classifications algorithms like linear regression models utilizing LASSO or Elastic-Net methods. This opens up the slate of models that I can use which could lead to different, and more accurate, results.
